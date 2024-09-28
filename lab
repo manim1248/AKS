@@ -1,0 +1,2930 @@
+https://raw.githubusercontent.com/Azure-Samples/aks-store-demo/main/aks-store-ingress-quickstart.yaml
+Create AKS cluster
+==================================
+Lab1: Create AKS cluster 
+
+
+
+LAB-2 creating pod
+================================
+Task-1  Imperative method
+----------
+ kubectl run test --image=nginx:latest
+
+kubectl get pod
+alias k=kubectl
+k get pod
+k get pod -o wide
+k get nodes
+k describe pod test
+
+task-2 declarative method
+-----------------------------
+ vi mypod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+
+
+k create -f mypod.yaml
+kubectl get pod
+alias k=kubectl
+k get pod
+k get pod -o wide
+k get nodes
+k describe pod nginx-pod
+
+kubectl api-resources
+k explain po 
+k explain rs
+k explain deploy
+k get po -n kube-system
+k delete pod nginx-pod
+===============================================
+Task-3 ReplicaSet
+----------------------------
+vi nginx-rs.yaml 
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-rs
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+kubectl apply -f nginx-rs.yaml
+kubectl  get pods
+kubectl get pod -l app=nginx
+kubectl get rs nginx-rs -o wide
+kubectl  describe rs nginx-rs
+kubectl get pod
+kubectl delete pod nginx-rs-764mq
+kubectl get pod
+kubectl get rs
+kubectl delete rs nginx-rs
+kubectl get rs
+kubectl get po
+=============================================================
+Lab 3: Deployment
+=============================================================
+
+----------------------------------------------------------------------
+Task 1: Write a Deployment yaml and Apply it
+----------------------------------------------------------------------
+#Create a dep-nginx.yaml using content given below
+
+vi dep-nginx.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-dep
+  labels:
+    app: nginx-dep
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx-app
+  template:
+    metadata:
+      labels:
+        app: nginx-app
+    spec:
+      containers:
+      - name: nginx-ctr
+        image: nginx:1.11
+        ports:
+        - containerPort: 80
+
+
+
+#Apply the Deployment yaml created in the previous step
+
+kubectl apply -f dep-nginx.yaml
+
+
+#View the objects created by Kubernetes, Deployment and Replica Set 
+
+kubectl get deployments
+kubectl get rs
+
+
+#Access one of the Pods and view nginx version
+
+kubectl get pods
+kubectl exec -it <pod_name> -- /bin/bash
+
+
+# nginx -v
+# exit
+
+
+-------------------------------------------------------------------------
+ Task 2: Update the Deployment with a Newer Image
+-------------------------------------------------------------------------
+
+#Update the nginx image in Pod using below
+
+kubectl set image deployment/nginx-dep nginx-ctr=nginx:1.12.2
+
+
+#Describe the deployment and see that the old pods are replaced with newer ones
+
+kubectl describe deployments
+
+
+#Access one of the Pods and view nginx version
+
+kubectl get pods
+kubectl exec -it <pod_name> -- /bin/bash
+
+# nginx -v
+# exit
+
+
+
+-----------------------------------------------------------------------------
+Task 3: Rollback of Deployment 
+-----------------------------------------------------------------------------
+
+#View the history of Deployments
+
+kubectl rollout history deployment/nginx-dep
+
+# add annotaion (An annotation is a key/value pair that can hold larger (compared to a label),)
+kubectl annotate deployment nginx-dep kubernetes.io/change-cause="version change to 1.16.0 to latest" --overwrite=true
+
+#Rollback the Deployment done in the previous task
+
+kubectl rollout undo deployment/nginx-dep --to-revision=1
+
+kubectl get rs
+
+
+#Access one of the Pods and view nginx version
+
+kubectl get pods
+kubectl exec -it <pod_name> -- /bin/bash
+
+# nginx -v
+# exit
+
+
+
+------------------------------------------------------------------------------
+Task 4: Scaling of Deployments
+------------------------------------------------------------------------------
+
+#View the number of Pod replicas created by the Deployment
+
+kubectl get deployments
+kubectl get pods
+
+
+#Scale up the deployment to have 8 Pod replicas
+
+kubectl scale deployment nginx-dep --replicas=8
+
+
+
+#Check the Pods and deployment to and verify that the number of Pod replicas are 8
+
+kubectl get deployments
+kubectl get pods
+
+
+#Scale down the deployments to 2 Pod replicas
+
+kubectl scale deployment nginx-dep --replicas=2
+
+
+#Check the Pods and deployment to and verify that the number of Pod replicas are down to 2
+
+kubectl get deployments
+kubectl get pods
+
+-----------------------------------------------------------------------------
+1. Create a Deployment:
+kubectl create deployment nginx --image=nginx
+
+Or Generate Deployment YAML (without applying):
+kubectl create deployment nginx --image=nginx --dry-run=client -o yaml
+
+2. Update a Deployment Image:
+kubectl set image deployment/web-server nginx=nginx:1.19.1
+
+3. Check Deployment Status:
+kubectl rollout status deployment/web-server
+
+4. View Deployment History:
+kubectl rollout history deployment/web-server
+
+5. Roll Back to a Previous Version:
+kubectl rollout undo deployment/web-server
+
+6.View Specific Revision Details:
+kubectl rollout history deployment/web-server --revision=2
+
+7. Pause a Deployment:
+kubectl rollout pause deployment/web-server
+
+8. Resume a Paused Deployment:
+kubectl rollout resume deployment/web-server
+
+9. Restart a Deployment:
+kubectl rollout restart deployment/web-server
+
+10. Create a Deployment from a YAML file:
+kubectl create -f deployment.yaml
+
+11. Get Help for Rollout Commands:
+kubectl rollout -h
+----------------------------------------------------------------------------
+#Task 6 Cleanup the resources using below command
+-----------------------------------------------------------------------------
+kubectl delete -f dep-nginx.yaml
+-------------------------------------------------------------------------------
+task:7 Blue/Green Deployment on Kubernetes 
+
+vi web-blue.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-blue
+      type: web-app
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: web-blue
+        type: web-app
+    spec:
+      containers:
+      - image: mandarct/web-blue:v1
+        name: web-blue
+        ports:
+        - containerPort: 80
+          protocol: TCP
+		 
+kubectl apply -f web-blue.yaml
+kubectl get deploy
+kubectl get pods
+
+Now create Loadbalancer service to access application
+
+		 
+vi svc-web-lb.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-svc-lb
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    type: web-app
+  type: LoadBalancer
+  ports:
+   - port: 80
+     targetPort: 80
+	 
+kubectl apply -f svc-web-lb.yaml
+kubectl get svc
+
+access you application
+
+
+deployment deploy following yaml file
+
+vi web-green.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-green
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: web-green
+        type: web-app
+    spec:
+      containers:
+      - image: mandarct/web-green:v1
+        name: web-green
+        ports:
+        - containerPort: 80
+          protocol: TCP
+
+kubectl apply -f web-green.yaml
+kubectl get deployment
+kubectl get pods
+
+access this application using same service that we create previously.
+
+some time will to blue deployment web page, some time green webpage
+
+If you delete the web-green deployment, load-balancer will start sending traffic only to the blue pods
+kubectl describe svc web-app-svc-lb
+ 
+kubectl delete deploy web-blue
+kubectl delete deploy web-green
+kubectl delete svc web-app-svc-lb
+kubectl get svc
+
+=============================================================
+Lab 4: Services in Kubernetes
+=============================================================
+---------------------------------------------------------------
+# Task 1 Create a pod using below yaml
+---------------------------------------------------------------
+
+vi httpd-pod.yaml
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: httpd-pod
+  labels:
+    env: prod 
+    type: front-end
+    app: httpd-ws
+spec:
+  containers:
+  - name: httpd-container
+    image: httpd
+    ports:
+       - containerPort: 80
+
+
+# Apply the pod definition yaml
+
+kubectl apply -f httpd-pod.yaml
+
+
+# Check the newly created Pod
+
+kubectl get pods
+
+kubectl get pods -o wide
+
+# Describe Pod using below command
+
+kubectl describe pod httpd-pod
+
+
+----------------------------------------------------------------------
+#Task 2  Setup ClusterIP service
+----------------------------------------------------------------------
+
+# Create  a ClusterIP service using below YAML
+
+vi httpd-svc.yaml
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd-svc
+spec:
+  selector:
+    env: prod
+    type: front-end
+    app: httpd-ws
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+
+
+ #Apply above definition using below to create a ClusterIP service
+
+kubectl apply -f httpd-svc.yaml
+
+ # Describe the service and verify it has populated the endpoints with IP address matching Pod label
+
+kubectl get svc
+
+kubectl describe svc httpd-svc
+
+  # Get EndPoint of the service
+
+kubectl get ep  
+
+ # Get External IPs of the machines in the cluster using below.
+
+kubectl get svc -o wide | awk '{print $4}'
+
+ # Go to web browser and type the external ip to access the webpage..
+
+
+------------------------------------------------------------------------------
+#Task 3  Setup NodePort Service
+------------------------------------------------------------------------------
+
+# Modify the service created in the previous task to type NodePort
+
+vi httpd-svc.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd-svc
+spec:
+  selector:
+    env: prod
+    type: front-end
+    app: httpd-ws
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: NodePort
+
+
+ #  Apply the changes using below command
+
+kubectl apply -f httpd-svc.yaml
+
+
+ # View details of the modified service
+
+kubectl describe svc httpd-svc
+
+ # Validate connectivity using External IP on NodePort using below or via browser
+
+curl <EXTERNAL-IP>:NodePort
+
+ # Get External IPs of the machines in the cluster. SSH to one of the machines and rerun the command in the previous task
+
+kubectl get nodes -o wide | awk '{print $7}'
+
+ssh -t ubuntu@<Node_IP> curl <Cluster_IP>:<Service_Port>
+------------------------------------------------------------------------------------
+#Task 4  Setup LoadBalancer Service
+------------------------------------------------------------------------------------
+
+ # Modify the service created in the previous task to type LoadBalancer 
+
+vi httpd-svc.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd-svc
+spec:
+  selector:
+    env: prod
+    type: front-end
+    app: httpd-ws
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer
+
+
+ #  Apply the changes using below command
+
+kubectl apply -f httpd-svc.yaml
+
+
+ # Verify that a new service of type LoadBalancer has been created
+
+kubectl get svc
+
+kubectl describe svc httpd-svc
+
+ 
+ # Access the LoadBalancer on the kops instance or via browser
+
+curl <LoadBalancer_DNS>
+
+
+
+-------------------------------------------------------------------------------
+#Task 5 Delete and recreate httpd Pod
+-------------------------------------------------------------------------------
+# Delete the existing httpd-pod using below
+
+kubectl delete -f httpd-pod.yaml
+
+# View the service details and notice that the Endpoints field is empty
+
+kubectl describe svc httpd-svc
+
+# Recreate the httpd Pod and view service details Verify that the endpoints is updated with new Pod IP
+
+kubectl apply -f httpd-pod.yaml
+
+kubectl describe svc httpd-svc
+
+
+
+--------------------------------------------------------------------------------
+#Task 6 Cleanup the resources using below command
+----------------------------------------------------------------------------------
+
+kubectl delete -f httpd-pod.yaml
+kubectl delete -f httpd-svc.yaml
+==========================================================
+=============================================================
+Lab 5: DaemonSet in Kubernetes
+=============================================================
+
+#Create a DaemonSet using below yaml
+
+vi ds-pod.yaml
+----------------------------------------------
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: redis-ds
+  labels:
+    app: redis-ds
+spec:
+  selector:
+    matchLabels:
+      app: redis-app
+  template:
+    metadata:
+       labels:
+           app: redis-app
+    spec:
+      containers:
+      - name: redis-ctr
+        image: redis
+
+-----------------------------------------------
+
+#Apply the yaml definition to create a fluent-ds DaemonSet
+
+kubectl apply -f ds-pod.yaml
+
+#Check the available daemonsets in kubernetes cluster
+
+kubectl get ds redis-ds
+
+
+#Verify that pods for fluent are created one for each node using DaemonSet
+
+kubectl get pods -o wide
+
+#Cleanup the DaemeonSet using below 
+
+kubectl delete -f ds-pod.yaml
+
+#Verify the pods to find (all) the fluentd pods being deleted from each of the nodes
+
+kubectl get pods
+
+
+=============================================================
+Lab 6: Persistent Volume in Kubernetes
+=============================================================
+Volumes
+-------------------
+Task:1-EmptyDir
+------------------
+
+vi emptydir.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: test-pod
+  name: test-pod
+spec:
+  volumes:
+  - name: volume-1
+    emptyDir: {}                # /var/lib/kubelet under this stores the data uder node where the pod is creating
+  containers:
+  - image: nginx
+    name: ng-ctr
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: volume-1
+      mountPath: /app
+
+save the file
+kubectl apply -f emptydir.yaml
+kubectl get pods
+kubectl get pods -o wide
+#Go insdie the pod and create file in the /app dir
+kubectl exec -it test-pod  -- bash
+cd /app
+touch f1 f2
+ls
+exit
+# now you are back to kops server
+kubectl delete pod test-pod
+kubectl get pod
+
+Task:2-HostPath
+=================
+# Create file
+vi  nginxpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: ws
+  name: host-pod
+spec:
+  nodeName: i-006f490d250f417ca
+  volumes:
+  - name: hostpath-volume
+    hostPath:
+      path: /pvdir
+  containers:
+  - image: nginx
+    name: ng-ctr
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: hostpath-volume
+      mountPath: /usr/share/nginx/html/
+save the file
+
+ kubectl apply -f nginxpod.yaml
+ k get pod
+ kubectl expose pod host-pod --port 80 --type LoadBalancer --name host-svc
+ k get svc
+ kubectl describe svc
+ # take node ip and port no to access the website
+
+#Create another pod to access the same volume
+--------------------------------------------------
+vi httppod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: httpd
+  name: httpd-pod
+spec:
+  nodeName: i-006f490d250f417ca
+  volumes:
+  - name: httpd-volume
+    hostPath:
+      path: /pvdir
+  containers:
+  - image: httpd
+    name: httpd-ctr
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: httpd-volume
+      mountPath: /usr/local/apache2/htdocs/
+
+save the file
+ kubectl apply -f httppod.yaml
+ kubectl get pod
+ kubectl exec -it httpd-pod  -- bash
+ ls 
+ cd htdocs
+ cat index.html
+
+# you can see the same data in the file
+exit
+kubectl get pod
+kubectl delete pod  host-pod
+kubectl delete pod httpd-pod
+kubectl get pod
+----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+# Task 3 - Create a Local Persistent Volume
+--------------------------------------------------------------------------------
+
+vi pv-volume.yaml
+
+
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: pv-volume
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/pvdir"
+
+
+
+kubectl apply -f pv-volume.yaml
+
+kubectl get pv
+
+kubectl describe pv pv-volume
+
+------------------------------------------------------------------------------------
+# Task 4  - Create a PV Claim
+------------------------------------------------------------------------------------
+vi pv-claim.yaml
+
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+kubectl apply -f pv-claim.yaml
+kubectl get pvc
+kubectl describe pvc
+----------------------------------------------------------------------------------------
+# Task 5  - Create nginx Pod with NodeSelector
+----------------------------------------------------------------------------------------
+vi pv-pod.yaml
+
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pv-pod
+spec:
+  volumes:
+    - name: pv-storage
+      persistentVolumeClaim:
+        claimName: pv-claim
+  containers:
+     - name: pv-container
+       image: nginx
+       ports:
+          - containerPort: 80
+            name: "http-server"
+       volumeMounts:
+          - mountPath: "/usr/share/nginx/html"
+            name: pv-storage
+  nodeSelector:
+    kubernetes.io/hostname: ip-172-20-33-138.ap-south-1.compute.internal
+
+# Apply the Pod yaml created in the previous step
+
+kubectl apply -f pv-pod.yaml
+
+# View Pod details and see that is created on the required node
+
+kubectl get pods -o wide
+
+# Access shell on a container running in your Pod
+
+kubectl exec -it pv-pod -- /bin/bash
+
+# Run the following commands in the container to verify PersistentVolume
+
+ apt-get update
+ apt-get install curl -y
+ curl localhost
+ exit
+
+# delete the resources created in this lab.
+kubectl delete -f pv-pod.yaml
+kubectl delete -f pv-claim.yaml
+kubectl delete -f pv-volume.yaml
+=============================================================
+
+Lab: Liveness.Readyness
+Lab 5: Liveness and Readiness probes
+
+Task 1: Liveness probes
+-------------------------------		  
+vi liveness-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: lns
+  name: liveness-pod
+spec:
+  containers:
+  - name: liveness
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - touch /liveness; sleep 6000
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /liveness
+      initialDelaySeconds: 5
+      periodSeconds: 5
+	  
+kubectl get pods	  
+kubectl describe pod liveness-exec
+ 
+now login to container and delete following file
+kubectl exec -it liveness-pod sh 
+# rm -f /liveness
+# exit
+
+kubectl get pods
+you can see pod is getting restarted
+
+ 
+Task 2: Readiness probe
+------------------------------------------ 
+
+vi readiness.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: rns
+  name: readiness-pod
+spec:
+  containers:
+  - name: readiness
+    image: nginx
+    args:
+    - /bin/bash
+    - -c
+    - service nginx start; touch /readiness; sleep 6000
+    readinessProbe:
+      exec:
+        command:
+        - cat
+        - /readiness
+      initialDelaySeconds: 5
+      periodSeconds: 5
+	  
+kubectl create -f readiness.yaml
+kubectl get pods
+
+
+login inside pod and delete folloing file 
+
+kubectl exec -it readiness-pod bash 
+# rm -f /readiness
+# exit
+
+
+View the Pod events and see that readiness probe has failed
+kubectl describe pods readiness-pod
+
+now describe service
+kubectl describe svc readiness-svc
+
+End point is gone
+----------------------------------------------
+Lab 2: Sidecar container and Patterns
+
+Task: 1 sidecar container
+
+vi sidecar.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-sidecar
+spec:
+  containers:
+  - name: app-container
+    image: ubuntu:latest
+    command: ["/bin/sh"]
+    args: ["-c","while true; do date >> /var/log/app.txt; sleep 5; done"]
+    volumeMounts:
+    - name: share-logs
+      mountPath: /var/log/
+  - name: sidecar-container
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: share-logs
+      mountPath: /usr/share/nginx/html
+  volumes:
+  - name: share-logs
+    emptyDir: {}
+	
+	
+kubectl create -f sidecar.yaml
+kubectl get pod
+
+kubectl exec -it pod-sidecar -c sidecar-container -- bash
+install curl
+apt update && apt install curl -y
+ 
+curl 'http://localhost:80/app.txt'
+
+--------------------------------------------
+
+-----------------------------------------------------------------------
+Task 1: Jobs in kubernetes 
+----------------------------------------------------------------------- 
+vi job-pod.yaml
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: jobs-hello
+spec:
+  template:
+    metadata:
+      name: jobs-pod
+    spec:
+      containers:
+      - name: jobs-ctr
+        image: busybox
+        args:
+        - /bin/sh
+        - -c
+        - echo HELLO WORLD !!!!!
+      restartPolicy: Never
+
+kubectl create -f job-pod.yaml
+kubectl get jobs
+kubectl get pods
+
+read logs 
+kubectl logs jobs-hello-7cfn2 
+HELLO WORLD !!!!!
+
+Describe job to see
+kubectl describe jobs jobs-hello
+
+kubectl delete -f job.yaml
+-----------------------------------------------------------------------
+Task 2: Cronjobs 
+-----------------------------------------------------------------------
+#Create a yaml called cron.yaml. Use the content given below to fill the file
+
+vi cron.yaml
+ 
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-hello
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cronjob-ctr
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - echo Hello World!
+          restartPolicy: OnFailure
+
+kubectl create -f cronjob.yaml
+
+kubectl get cronjobs.batch 
+NAME            SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+cronjob-hello   */1 * * * *   False     0        28s             42s
+
+kubectl get pod
+NAME                           READY   STATUS      RESTARTS   AGE
+cronjob-hello-27991419-lz69c   0/1     Completed   0          42s
+
+kubectl logs cronjob-hello-27991419-lz69c 
+Hello World!
+-------------------------------------------------------------------------------------------------
+Namespaces
+-----------------------
+# create namespace using imperative method
+
+kubectl create namespace nginx
+kubectl get namespaces 
+or 
+kubectl get ns
+
+# create namespace using config yaml) file
+==================================
+vi namespace.yml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod1
+
+
+
+kubectl api-resources | grep namesapce
+
+kubectl apply -f namespace.yml
+
+kubectl get ns
+
+kubectl get all
+
+
+# create resource in the specific namespaces
+
+vi namespace-pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod1
+  namespace: prod1
+  labels:
+    team: integrations
+    app: todo
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+
+kubectl apply -f namespace-pod.yml
+
+kubeclt get pod -n prod1
+
+kebectl get all (get all the resources from the default namespaces)
+
+kebectl get all -n prod1
+
+kebectl get all --all-namespaces  (get all resources from all the name sapces)
+
+or 
+kubectl get all -A
+
+
+# do-it-yourself: create deployment in the test namesspace
+
+# set the default namespace as nginx
+
+kubectl config set-contex --current --namespace=nginx
+
+kubectl config get-contexts
+
+kubectl get all (get all the resources from the nginx )
+
+Lab 8: Resource Quotas in Kubernetes
+-------------------------------------------------
+Task 1: Creating a Namespace
+-------------------------------------------------
+kubectl create namespace quotas
+kubectl get ns
+kubectl describe ns quotas
+-------------------------------------------------
+Task 2: Creating a resourcequota
+-------------------------------------------------
+vi rq-quotas.yaml
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota
+  namespace: quotas
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+
+kubectl create -f rq-quotas.yaml
+kubectl describe ns quota
+
+
+------------------------------------------------
+Task 3: Verify resourcequota Functionality
+-------------------------------------------------
+vi rq-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: quota-pod
+  namespace: quotas
+spec:
+  containers:
+  - name: quota-ctr
+    image: nginx
+    resources:
+      limits:
+        memory: "800Mi"
+        cpu: "1000m"
+      requests:
+        memory: "600Mi"
+        cpu: "350m"
+    ports:
+      - containerPort: 80
+	  
+kubectl create -f rq-pod.yaml
+kubectl describe ns quota
+kubectl get quota -n quotas -o yaml
+
+-------------------------------------------------
+Task 4: Limiting Number of Pods
+-------------------------------------------------
+kubectl edit resourcequotas quota -n quotas
+add following lines in spec: > hard:
+count/deployments.apps: 2
+count/replicasets.apps: 3
+
+-------------------------------------------------
+Task 5: Clean-up
+-------------------------------------------------
+#Delete the quota to clean up.
+kubectl delete ns quotas
+------------------------
+Lab:HPA
+-----------------------
+
+vi deployment.yaml 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utility-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: utility-api
+  template:
+    metadata:
+      name: utility-api-pod
+      labels:
+        app: utility-api
+    spec:
+      containers:
+        - name: utility-api
+          image: k8s.gcr.io/nginx-slim:0.8
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: 20Mi
+              cpu: "0.25"
+            limits:
+              memory: 400Mi
+              cpu: "1"
+
+vi service.yml 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: utility-api-service
+spec:
+  selector:
+    app: utility-api
+  ports:
+    - port: 80
+      targetPort: 80
+
+vi  hpa.yml 
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: utility-api
+spec:
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 50
+          type: Utilization
+      type: Resource
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: utility-api
+
+vi  trafic-gen.yml 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: traffic-generator
+spec:
+  containers:
+  - name: alpine
+    image: alpine
+    args:
+    - sleep
+    - "100000000"
+
+
+kubectl exec -it traffic-generator -- sh
+
+apk add wrk
+
+wrk -c 5 -t 5 -d 300s -H "Connection: Close" http://utility-api-service:80/api/stress
+
+exit
+
+
+# -c=connection
+-t = thread
+-d = duration 
+
+kubectl top pods
+kubectl get hpa
+==================================================
+Statefulset
+--------------------------------------------------
+
+
+vi  nginx-sts.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  labels:
+    app: nginx-svc
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None  # headless service 
+  selector:
+    app: nginx-sts
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nginx-sts
+spec:
+  serviceName: nginx-svc
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-sts
+  template:
+    metadata:
+      labels:
+        app: nginx-sts
+    spec:
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+
+#Create a Stateful Set by applying the yaml
+
+kubectl apply -f nginx-sts.yaml
+
+The access modes are:
+
+ReadWriteOnce -- the volume can be mounted as read-write by a single node
+ReadOnlyMany -- the volume can be mounted read-only by many nodes
+ReadWriteMany -- the volume can be mounted as read-write by many nodes
+ReadWriteOncePod (RWOP) --the volume can be mounted as read-write by a single Pod. 
+
+==========================================================
+Week-2
+===========================================================
+static pod 
+-----------------------------------------------------
+
+vi static-web.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: static-web
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+
+
+kubectl apply -f static-web.yaml
+
+
+kubectl get pods
+
+
+copy the pod YAML to the folder designated for static pod's YAML files, complete the following steps:
+Locate the folder on the Kubernetes node that contains the static pod's YAML files, typically /etc/kubernetes/manifests/.
+cat /var/lib/kubelet/config.yaml
+Copy the static-web.yaml file into the folder using the command:
+
+sudo cp static-web.yaml /etc/kubernetes/manifests/
+
+kubectl get pods -o wide
+
+Lab 7: ConfigMap
+
+Task 1: Setting container environment variables using configmap
+-----------------------------------------------------------------
+
+imperative way to create config-map in environment variables:
+
+kubectl create configmap my-configmap --from-literal mydata=hello_world --dry-run=client -o yaml
+
+vi config-map.yaml
+
+apiVersion: v1
+data:
+  mydata: hello_world
+kind: ConfigMap
+metadata:
+  name: my-configmap
+
+kubectl create -f config-map.yaml
+ kubectl get configmaps
+
+
+vi cm-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-pod
+spec:
+  containers:
+  - name: quota-ctr
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+    env:
+    - name: hlo
+      valueFrom:
+        configMapKeyRef:
+           name: my-configmap
+           key: mydata
+		   
+kubectl exec -it cm-pod -- bash
+echo $hlo
+hello_world
+exit
+
+----------------------------------------------------------------
+
+Task 2: Setting configuration file with volume using ConfigMap
+----------------------------------------------------------------
+vi redis-cm.yaml
+ 
+apiVersion: v1
+data:
+  redis-config: |
+    maxmemory 2mb
+    maxmemory-policy allkeys-lru
+kind: ConfigMap
+metadata:
+  name: example-redis-config
+  namespace: default
+
+kubectl create -f redis-cm.yaml 
+kubectl get cm
+kubectl describe cm example-redis-config 
+
+Create pod
+
+vi redis-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+spec:
+  containers:
+  - name: redis
+    image: redis
+    env:
+    - name: MASTER
+      value: "true"
+    ports:
+    - containerPort: 6379
+    volumeMounts:
+    - mountPath: /redis-master-data
+      name: data
+    - mountPath: /redis-master
+      name: config
+  volumes:
+    - name: data
+      emptyDir: {}
+    - name: config
+      configMap:
+        name: example-redis-config
+        items:
+        - key: redis-config
+          path: redis.conf
+
+kubectl create -f redis-pod.yaml
+read config map's file 
+ kubectl exec redis -- cat /redis-master/redis.conf
+
+-------------------------------------------------------------------------------
+Task 3: Creating a Secret
+-------------------------------------------------------------------------------
+vi secrets.yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+type: Opaque
+data:
+  ##all below values are base64 encoded
+  ##rootpw is root
+  ##user is user
+  ##password is mypwd
+  rootpw: cm9vdAo=
+  user: dXNlcgo=
+  password: bXlwd2QK
+  
+kubectl create -f secrets.yaml
+kubectl get secrets
+kubectl describe secrets mysql-credentials
+see your encoded secrets 
+kubectl get secrets mysql-credentials -o yaml
+
+Task: 4 create pod with secret
+
+vi secret-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-pod
+spec:
+  containers:
+  - name: quota-ctr
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+    envFrom:
+    - secretRef:
+        name: mysql-credentials
+
+kubectl create -f secret-pod.yaml
+
+kubectl get pods
+
+To check created secrets
+kubectl get secret
+
+To describe a secret
+kubectl describe secret <secret-name>
+
+To decode the encrypted data
+echo "<data>" | base64 -d
+
+
+Lab 9: Pod and Container level security using Context
+---------------------------------------------------------
+Task 1: Set the security context for a pod
+---------------------------------------------------
+File 1: sc-demo-1.yaml
+This YAML file demonstrates the implementation of security context at the pod level.
+
+vi sc-demo-1.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  volumes:
+  - name: demo-vol
+    emptyDir: {}
+  containers:
+  - name: sc-demo
+    image: busybox:1.28
+    command: [ "sh", "-c", "sleep 1h" ]
+    volumeMounts:
+    - name: demo-vol
+      mountPath: /data/demo
+
+To apply this file, use the following command:
+kubectl apply -f sc-demo-1.yaml
+
+To access the shell inside the pod, run the following command:
+kubectl exec -it security-context-demo -- /bin/sh
+
+
+To check the user ID, group ID, and filesystem ID, run the following commands:
+id
+ps aux
+
+The id command displays the user ID and group ID of the current user running inside the pod. 
+The ps aux command shows the processes running inside the pod along with their details.
+
+Since a volume is mounted, you can navigate to the mounted directory and perform file operations:
+cd /data/demo
+echo hello devopspro >> myfile
+ls -l
+
+---------------------------------------------------
+Task 2: Set the security context for a container
+---------------------------------------------------
+
+File 2: sc-demo-2.yaml
+This YAML file demonstrates the implementation of security context at both the pod and container level.
+
+vi sc-demo-2.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo-2
+spec:
+  securityContext:
+    runAsUser: 1000
+  containers:
+  - name: sc-demo-2
+    image: gcr.io/google-samples/node-hello:1.0
+    securityContext:
+      runAsUser: 2000
+
+To apply this file, use the following command:
+kubectl apply -f sc-demo-2.yaml
+
+To access the shell inside the pod, run the following command:
+kubectl exec -it security-context-demo-2 -- /bin/sh
+
+To check the applied security context on the container, run the following commands:
+ps aux
+id
+
+
+---------------------------------------------------
+Task 3: Set the security context for a container
+---------------------------------------------------
+File 3: sc-demo-3.yaml
+This YAML file demonstrates the addition of the NET_ADMIN capability to a container.
+
+vi sc-demo-3.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo-3
+spec:
+  containers:
+  - name: sc-demo-3
+    image: ubuntu
+    command: [ "sh", "-c", "sleep 1h" ]
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN"]
+
+To apply this file, use the following command:
+kubectl apply -f sc-demo-3.yaml
+
+To access the shell inside the pod, run the following command:
+kubectl exec -it security-context-demo-3 -- /bin/bash
+
+
+To install the required package, run the following commands inside the pod:
+apt update
+apt install iproute2
+
+#iptoute2 provides advanced IP routing and network devices configuration.
+
+To check the network interfaces, run the following command:
+ip link show
+
+To add an IP address to the eth0 network interface, use the following command:
+ip addr add 192.168.0.10/24 dev eth0
+
+To check the added IP address, run the following command:
+ip addr show eth0
+
+Lab 11: RBAC 
+=================
+The role.yaml file contains the configuration for creating a role named pod-reader. 
+The role allows the user to perform actions like get, watch, and list on pods resources.
+
+vi role.yaml 
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+
+To apply this role:
+kubectl apply -f role.yaml
+To check the created role:
+kubectl get role
+
+Role Binding
+-----------
+The rolebinding.yaml file defines a role binding named read-pods
+that binds the pod-reader role to the user jack in the default namespace.
+
+vi rolebinding.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: User
+  name: jack
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+To apply this role binding:
+kubectl apply -f rolebinding.yaml
+To check the created role binding:
+kubectl get rolebinding
+To check the permissions of the jack user:
+kubectl auth can-i get pod --as jack
+
+
+==========================================================
+Cluster Role
+==========================================================
+The clusterrole.yaml file contains the configuration for creating a cluster role named secret-reader. 
+This cluster role allows the user to perform actions like get, watch, and list on secrets resources.
+
+vi clusterrole.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-reader
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+
+To apply this cluster role:
+kubectl apply -f clusterrole.yaml
+To check the created cluster role:
+kubectl get clusterrole | grep secret-reader
+
+Cluster Role Binding
+=====================
+The clusterrolebinding.yaml file contains the configuration for creating a cluster role binding named read-secrets-global. 
+This cluster role binding binds the secret-reader cluster role to the user riya globally.
+
+vi clusterrolebinding.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+subjects:
+- kind: User
+  name: riya
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+
+To apply this cluster role binding:
+kubectl apply -f clusterrolebinding.yaml
+
+To check the created cluster role binding:
+kubectl get clusterrolebinding | grep read-secrets-global
+
+To check the permissions of the riya user across all namespaces:
+kubectl auth can-i get secret --as riya -A
+
+==================================================================================
+==================================================================================
+Setting Up Your Service Account
+====================================================================================
+To create a Service Account, use the following commands:
+kubectl create sa mysa
+
+To create a token for the Service Account "mysa" :
+kubectl create token mysa
+
+Defining Permissions with Roles
+
+
+vi sarole.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+
+kubectl apply -f sarole.yaml 
+
+To associate the Role with the Service Account, create a RoleBinding. 
+
+vi mysa.yml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+  name: mysa
+  namespace: default
+
+kubectl aaply -f mysa
+kubectl get sa
+
+vi sarolebinding.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: mysa
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl apply -f sarolebinding.yaml 
+
+
+Pod definition with the appropriate serviceAccountName. 
+
+vi podattach.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  serviceAccountName: mysa
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+
+kubectl apply -f podattach.yaml 
+
+
+Ensuring Access: Verifying Permissions
+
+To verify the access permissions of the Service Account, use the following command:
+kubectl describe pod nginx
+kubectl auth can-i get pods --as=system:serviceaccount:default:mysa
+
+=====================================================================================
+: RBAC (Self)
+--------------------------------------------------------------------
+Task 1: Create a new ServiceAccount demo-sa
+---------------------------------------------------------------------
+kubectl get ns
+kubectl create ns purple
+kubectl create sa -n purple demo-sa 
+kubectl get ns
+
+---------------------------------------------------------------------
+Task 2: Create a new Role and RoleBinding 
+---------------------------------------------------------------------
+kubectl create role demo-role --verb=list --resource=pods -n purple
+kubectl create rolebinding demo-rb --role=demo-role --serviceaccount=purple:demo-sa -n purple
+
+---------------------------------------------------------------------
+Task 3: Test whether you are able to do a GET request to Kubernetes API 
+---------------------------------------------------------------------
+kubectl run test --image=nginx -n purple
+kubectl exec -it -n purple test -- /bin/bash 
+curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default/api/v1/namespaces/purple/pods 
+
+vi pod-sa.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-01
+  namespace: purple
+spec:
+  serviceAccountName: demo-sa
+  containers:
+  - name: my-container
+    image: nginx
+
+kubectl exec -it -n purple test-01 -- /bin/bash 
+curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default/api/v1/namespaces/purple/pods 
+
+============================================================
+
+Lab 10: Kubernetes Network Policy
+
+--------------------------------------------------
+Task 1: Network policy with Pod labels
+--------------------------------------------------
+#Create a nginx pod and service with labels role=backend
+
+kubectl run backend --image nginx -l role=backend
+kubectl expose po backend --port 80 
+
+kubectl get pod
+kubectl get svc
+
+#Create a new busybox pod and verify that it can access the backend service.
+Then, exit out of the container
+
+kubectl run --rm -it --image=busybox net-policy 
+wget -qO- -T3 http://backend
+exit
+
+#Create a network policy which uses labels to deny all ingress traffic
+
+vi np-deny-all.yml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-policy
+spec:
+  podSelector:
+    matchLabels:
+      role: backend
+  ingress: []
+
+kubectl create -f np-deny-all.yml
+kubectl get networkpolicies
+
+#Create a new busybox pod again and verify that it cannot access the backend service
+
+kubectl run --rm -it --image=busybox net-policy
+wget -qO- -T3 http://backend
+it will show timeout
+exit
+
+#Modify the network policy to allow traffic with matching Pod labels 
+Inspect the network policy and notice the selectors
+
+vi np-pod-label-allow.yml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-policy
+spec:
+  podSelector:
+    matchLabels:
+      role: backend
+  ingress:
+  - from:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          role: frontend
+		  
+
+#before applying this yaml describe networkpolicies to check rule
+kubectl apply -f np-pod-label-allow.yml
+kubectl describe networkpolicies backend-policy
+
+kubectl apply -f np-pod-label-allow.yml
+
+kubectl describe networkpolicies backend-policy
+
+#Run the busybox pod again and verify that it is able to access backend service.
+Notice the labels on the Pod. Inspect the network policy and notice the selectors
+
+kubectl run --rm -it --image=busybox --labels role=frontend net-policy
+wget -qO- -T3 http://backend
+exit
+#Run the busybox pod again without labels and notice that the backend service is not accessible any more.
+
+kubectl run --rm -it --image=busybox net-policy 
+wget -qO- -T3 http://backend
+exit
+
+
+--------------------------------------------------------
+Task 2: Using WordPress and MySQL as Deployments(skip)
+--------------------------------------------------------
+kubectl create ns networkdemo 
+
+kubectl create -f https://s3.ap-south-1.amazonaws.com/files.cloudthat.training/devops/kubernetes-cka/mysql_deploy.yaml -n networkdemo
+
+
+kubectl create -f https://s3.ap-south-1.amazonaws.com/files.cloudthat.training/devops/kubernetes-cka/wordpress_deploy.yaml -n networkdemo
+
+kubectl get pod,svc -n networkdemo 
+
+vim deny-all.yaml 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: networkdemo
+spec:
+  podSelector:
+    matchLabels: {}
+  policyTypes:
+  - Ingress
+
+kubectl apply -f deny-all.yaml -n networkdemo
+
+==================================================================================
+Lab 12: Node Labelling and Constraining pods in Kubernetes
+
+---------------------------------------------------------------------
+Task 1: Deploy pod in specific node based on node-name / hostname
+---------------------------------------------------------------------
+
+vi node-name.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-nodename
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  nodeName: {node-name / hostname }
+
+kubectl create -f node-name.yaml
+kubectl get pods -o wide 
+see your pod in defined node
+ 
+---------------------------------------------------------------------
+Task 1.1: Node labeling and constraining pods
+---------------------------------------------------------------------
+list node labels
+kubectl get nodes --show-labels
+
+kubectl label nodes <node_name> disktype=ssd
+
+list you nodes to check labels 
+kubectl get nodes --show-labels | grep "disktype=ssd"
+
+vi nlns-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nlns-nginx-pod
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nlns-nginx-ctr
+    image: nginx
+  nodeSelector:
+    disktype: ssd
+
+
+kubectl apply -f nlns-pod.yaml
+kubectl get pods -o wide
+
+---------------------------------------------------------------------
+Task 2: Cleanup
+---------------------------------------------------------------------
+#Delete the objects created in this lab.
+
+kubectl delete -f nlns-pod.yaml 
+kubectl label nodes <node_name> disktype-
+ 
+#Verify that the label is deleted.
+
+kubectl get nodes --show-labels | grep ssd 
+
+Taint and Toleration
+--------------------------
+Taint a node with the Noschedule taint effect and set the key-value pair 
+
+Use the following command to apply the taint to the desired node:
+
+kubectl taint nodes <node_name> key1=value1:NoSchedule
+
+kubectl describe node node01
+
+Create a pod and check the node on which it is scheduled.
+
+kubectl run test --image=nginx
+kubectl get pod
+kubectl get pod -o wide
+
+Create a pod and add a toleration to it with the following specifications:
+Key: key1
+Operator: Equal
+Value: value1
+Effect: Noschedule
+
+Use the following YAML definition to create the pod with the toleration:
+
+vi taintpod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod1
+spec:
+  containers:
+  - name: mycontainer
+    image: nginx
+  tolerations:
+   - key: run
+     operator: Equal
+     value: mypod
+     effect: NoSchedule
+
+Remove the taint effect from the node that was previously tainted.
+
+kubectl taint nodes <node_name> key1=value1:NoSchedule-
+
+====================================================================================
+Lab 13: Advanced Pod Scheduling
+
+---------------------------------------------------------------------
+Task 1: Node Affinity
+---------------------------------------------------------------------
+vi node-aff-pref.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: na-nginx-pod1
+spec:
+  containers:
+  - name: na-nginx-ctr1
+    image: nginx
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - ssd
+
+kubectl apply -f node-aff-pref.yaml
+kubectl get pods -o wide
+
+Remove node label 
+
+kubectl label nodes <node_name> disktype-
+deploy same pod again it is getting deployed
+
+Task 2: required during scheduling
+
+remove label first 
+kubectl label nodes <node_name> disktype-
+
+
+vi aff-na-pod2.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: na-nginx-pod2
+spec:
+  containers:
+  - name: na-nginx-ctr2
+    image: nginx
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - ssd
+
+kubectl create -f aff-na-pod2.yaml
+
+pod is strictly looking for labeled node
+
+kubectl get pods -o wide
+kubectl label nodes <node_name> disktype=ssd
+
+once label is added pod will deployed
+
+---------------------------------------------------------------------
+Task 2: Pod Affinity
+---------------------------------------------------------------------
+
+vi depend-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pa-nginx-pod1
+  labels:
+    app: pa-nginx-app
+spec:
+  containers:
+  - name: pa-nginx-ctr1
+    image: nginx
+
+kubectl create -f depend-pod.yaml
+kubectl get pods
+
+---------------------------------------------------------------------
+Task 3: create pod with pod affinity
+---------------------------------------------------------------------
+vi aff-pa-pod2.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pa-nginx-pod2
+spec:
+  containers:
+  - name: pa-nginx-ctr2
+    image: nginx
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - pa-nginx-app
+        topologyKey: kubernetes.io/hostname
+
+kubectl create -f pod-affinity.yaml
+
+kubectl get pods -o wide
+both pod are in same node
+
+---------------------------------------------------------------------
+Task 4: pod anti affinity
+---------------------------------------------------------------------
+
+vi pod-antiaff.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - pa-nginx-app
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: nginx
+        image: nginx
+
+kubectl create -f  pod-antiaff.yaml
+kubectl get pod -o wide 
+
+
+kubectl delete -f  pod-antiaff.yaml
+ 
+==============================================================
+Helm
+================================================================
+Lab: 1 Install Helm in kubernetes Cluster 
+===========================================
+
+wget https://get.helm.sh/helm-v3.5.0-rc.2-linux-amd64.tar.gz
+
+tar -xzvf  helm-v3.5.0-rc.2-linux-amd64.tar.gz
+
+mv linux-amd64/helm /bin
+
+helm version
+
+
+Helm Commands 
+# this will print helm help
+helm
+
+# to see all available package in hub
+helm search hub
+
+# to list mysql or nginx charts
+helm search hub mysql 
+
+# to list all available repo
+helm repo list
+
+# add helm repo named bitnami
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# search bitnami named repo in server
+helm search repo bitnami
+
+#update repo
+helm repo update
+
+# Search chart in specific repo
+helm search repo bitnami/nginx
+helm search repo –l bitnami/mysql   #list all available versions 
+helm search repo nginx --versions
+
+
+# To remove the repo
+helm repo remove bitnami
+helm repo list
+
+
+# add again helm repo named bitnami
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+
+# install nginx using chart 
+helm install mywebserver bitnami/nginx
+
+# install in specific namesape then first create name space then install 
+kubectl create ns dev
+helm install -n dev  mywebserver bitnami/nginx
+# helm show default name space by default
+helm list
+# to check in the specific name space
+helm list -n dev
+
+# delete nginx
+helm uninstall mywebserver
+
+# delete from specific name space
+helm uninstall mywebserver -n dev
+helm list -n dev
+helm list
+kubectl get pod
+
+
+# update the repo 
+helm install mywebserver bitnami/nginx
+helm list
+helm repo update
+helm list
+helm status mywebserver
+helm upgrade mywebserver bitnami/nginx		# --reuse-values
+helm status mywebserver
+helm list
+
+
+
+Lab: 2 Chart Structure
+====================================
+
+apt update && apt install tree -y
+
+helm create <Chart-Name>	# martuj-mychart
+
+
+controlplane $ tree mychart/
+mychart/
+|-- Chart.yaml
+|-- charts
+|-- templates
+|   |-- NOTES.txt
+|   |-- _helpers.tpl
+|   |-- deployment.yaml
+|   |-- hpa.yaml
+|   |-- ingress.yaml
+|   |-- service.yaml
+|   |-- serviceaccount.yaml
+|   `-- tests
+|       `-- test-connection.yaml
+`-- values.yaml
+
+
+Dry- Run
+helm install --debug --dry-run mychart ./mychart/
+helm install mychart ./mychart/
+helm get manifest mychart
+
+
+
+
+Lab: 3 Create Custom Chart 
+==========================
+
+mkdir -p myapp/charts && mkdir -p myapp/templates
+
+cd myapp
+
+vi Chart.yaml 
+apiVersion: v2
+name: mychart
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+
+
+#create empty file
+touch values.yaml 
+ 
+
+vi templates/deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        ports:
+        - containerPort: 80
+
+
+
+vi templates/service.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+spec:
+  selector:
+    app: myapp
+  ports:
+  - protocol: TCP
+    port: 80
+  type: NodePort 
+
+
+
+$ tree
+.
+|-- Chart.yaml
+|-- charts
+|-- templates
+|   |-- deployment.yaml
+|   `-- service.yaml
+`-- values.yaml
+
+#type cd to comeout from the dir
+cd
+helm install mychart1 ./myapp
+kubectl get deployment 
+kubectl get pods
+
+helm uninstall mychart1
+
+Lab: 4  Create custom template
+=========================
+ 
+mkdir -p myapp1/charts && mkdir -p myapp1/templates
+ 
+cd myapp1
+ 
+vi Chart.yaml 
+apiVersion: v2
+name: mychart
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+ 
+ 
+vi values.yaml 
+replicaCount: 1
+app:
+  name: myapp
+  image: nginx
+  ports:
+    containerPort: 80
+ 
+ 
+vi templates/deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "myapp.applabels" . | nindent 7 }}
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.applabels" . | nindent 9 }}
+    spec:
+      containers:
+      - image: {{ .Values.app.image }}
+        name: {{ .Values.app.name }}
+        ports:
+        - containerPort: {{ .Values.app.ports.containerPort }}
+ 
+ 
+vi templates/service.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+spec:
+  selector:
+    app: myapp
+  ports:
+  - protocol: TCP
+    port: 80
+  type: NodePort
+ 
+ 
+ 
+vi templates/_helpers.tpl 
+{{- define "myapp.applabels" -}}
+app: myapp
+{{- end }}
+ 
+ 
+vi templates/NOTES.txt  
+Thank you for support {{ .Chart.Name }}.
+Your release is named {{ .Release.Name }}.
+ 
+To learn more about the release, try:
+ 
+   $ helm status {{ .Release.Name }}
+   $ helm get all {{ .Release.Name }}
+   $ helm uninstall {{ .Release.Name }}
+ 
+ 
+ 
+$ tree
+.
+|-- Chart.yaml
+|-- charts
+|-- templates
+|   |-- deployment.yaml
+|   `-- service.yaml
+`-- values.yaml
+ 
+#come out from dir
+cd 
+helm install mychart2 ./myapp1
+ 
+helm uninstall mychart2
+
+=====================================================================
+Prometheus and Grafana
+======================================================================
+- set hostname and install wget and unzip command
+---------------------------------------------------
+# sudo apt update -y
+# sudo apt install wget unzip -y
+# sudo hostnamectl  set-hostname Prometheus-server
+# bash
+
+donwload the prometheus
+---------------------------
+# wget https://github.com/prometheus/prometheus/releases/download/v2.39.1/prometheus-2.39.1.linux-amd64.tar.gz
+
+# New version
+wget https://github.com/prometheus/prometheus/releases/download/v2.53.2/prometheus-2.53.2.linux-amd64.tar.gz
+
+unzip the link
+----------------------
+
+#tar -xvzf prometheus-2.39.1.linux-amd64.tar.gz
+
+verify the file and run the prometheus
+------------------------------------
+#ls
+#cd prometheus-2.39.1.linux-amd64/
+#ls
+#./prometheus
+
+now prometheus is running 
+Add port in the inbound role 
+
+go to browser and take the public ip of instance and port no 9090
+
+example:
+http://43.204.149.136:9090/
+
+you can see now the webpage of Prometheus
+
+go to terminal presss
+ctrl+c to stop the premetheus
+
+Lab:2
+-------------
+
+create prometheus service
+------------------------------
+
+copy all the file form /home/ubuntu/prometheus-2.39.1.linux-amd64
+------------------------------------------------------
+#ls 		-you can see all the prometheus files
+
+# sudo cp -r .   /usr/local/bin/prometheus
+
+then create service file and copy the content given below
+----------------------------------------------------------
+# sudo vi /etc/systemd/system/prometheus.service
+
+[Unit]
+Description=Prometheus Service
+After=network.target
+
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/prometheus/prometheus --config.file=/usr/local/bin/prometheus/prometheus.yml
+
+[Install]
+WantedBy=multi-user.target
+
+
+save the file
+
+now start the service
+--------------
+# sudo systemctl daemon-reload
+
+# sudo systemctl start  prometheus
+
+# sudo systemctl enable  prometheus
+# sudo systemctl status  prometheus
+
+press q to exit from the service window
+
+now got browser and refresh the page or go to browser and take the public ip of instance and port no
+
+example:
+http://43.204.149.136:9090/
+
+-you can see now page.in the search type up command and click on execute 
+
+-similar way type go_info command and click on execute  	
+
+
+time series database (tsdb) status
+
+
+Lab:3: Install Node Exporter
+----------------------------
+
+download node exporter
+----------------------
+# cd
+# wget https://github.com/prometheus/node_exporter/releases/download/v1.4.0/node_exporter-1.4.0.linux-amd64.tar.gz
+
+extract the file
+---------------------
+# tar -xvzf node_exporter-1.4.0.linux-amd64.tar.gz
+# ls
+
+copy the file to bin
+----------------------------
+# sudo cp node_exporter-1.4.0.linux-amd64/node_exporter /usr/local/bin
+
+verify the files are copied 
+---------------------------
+# ls /usr/local/bin/
+
+
+create service file for node exporter and copy the given below content
+----------------------------------------------
+# sudo vi /etc/systemd/system/node-exporter.service
+
+
+[Unit]
+Description=Prometheus Node Exporter Service
+After=network.target
+
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+
+save the file
+
+reload the service
+---------------
+# sudo systemctl daemon-reload
+# sudo systemctl start node-exporter.service
+# sudo systemctl enable node-exporter.service
+# sudo systemctl status node-exporter.service
+press q to exit from the service window
+
+
+now go to browser and check you can able to access node exporter port no=9100
+-------------------------------------------
+
+http://43.204.149.136:9100/
+
+click on metrics --now you can see the metrics os the prometheus-server
+
+Lab:5: Configure prometheus configuration file.
+-------------------------------------------
+Go to prometheus server and configure prometheus yml file go to
+
+
+# cd /home/ubuntu/prometheus-2.39.1.linux-amd64
+# cd /usr/local/bin/prometheus/
+
+# ls
+# sudo vi prometheus.yml
+
+at the end of the file add the job as following make sure indentation should be same
+----------------------------------------------------------------------------------
+        
+- job_name: "node_exporter"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9100"]
+
+
+
+save the file 
+
+restart the prometheus service
+---------------------------
+# sudo systemctl restart  prometheus
+
+check for syntax validatation
+-----------------------------
+# sudo apt  install prometheus -y
+# promtool check config prometheus.yml
+
+skip the below command now if you add rule then you the following command,not now
+---------------------------------------------
+# promtool check rules /etc/prometheus/prometheus.rules.yml
+
+Prometheus-Query
+-----------------------
+up
+go_info
+node_uname_info
+node_boot_time_seconds
+node_cpu_seconds_total
+node_disk_info
+node_exporter_build_info
+node_memory_MemAvailable_bytes
+node_memory_MemFree_bytes
+node_filesystem_avail_bytes
+prometheus_build_info
+prometheus_http_requests_total
+scrape_duration_seconds
+node_cpu_seconds_total{instance="3.90.61.234:9100"}[5m]
+node_memory_MemFree_bytes / node_memory_MemTotal_bytes
+
+Grafana
+---------------------
+To install the latest Enterprise edition:
+==============================================
+sudo su -
+hostnamectl set-hostname Grafana
+bash
+ 
+sudo apt-get install -y apt-transport-https software-properties-common wget
+sudo mkdir -p /etc/apt/keyrings/
+wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com beta main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+# Updates the list of available packages
+sudo apt-get update
+# Installs the latest OSS release:
+sudo apt-get install Grafana
+# Installs the latest Enterprise release:
+sudo apt-get install grafana-enterprise
+
+type Y - to install
+
+Start the server with systemd
+-------------------------
+sudo systemctl daemon-reload
+sudo systemctl start grafana-server
+sudo systemctl status grafana-server
+sudo systemctl enable grafana-server.service
+
+
+Now go to browser and use public ip of instance to access the Grafana webpage
+ex:- http://174.129.136.156:3000
+
+It will ask user name and passwrod
+
+default user name and password is admin
+also ask for set new password if you want you can skip it.
+
+ACR
+=======================
+
+az login
+
+az acr login --name martujacr
+
+
+docker pull mcr.microsoft.com/hello-world
+
+
+docker tag mcr.microsoft.com/hello-world mycontainerregistry.azurecr.io/hello-world:v1
+
+example: docker tag mcr.microsoft.com/hello-world martujacr.azurecr.io/hello-world:v1
+
+docker push <login-server>/hello-world:v1
+
+docker push  martujacr.azurecr.io/hello-world:v1
+
+docker rmi <login-server>/hello-world:v1
+
+
+import
+------------
+az acr import --name martujacr --source docker.io/library/nginx:latest --image nginx:v1
+
+
+az acr import --name martujacrdemo --source docker.io/library/nginx:latest --image nginx:v1
+
+martujacr.azurecr.io/nginx:v1
+
+
+vi test-pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-acr-pod
+spec:
+  containers:
+    - name: main-app-container
+      image: martujacrdemo.azurecr.io/nginx:v1
+      imagePullPolicy: IfNotPresent
+
+================================================================
+cordon drain uncordon
+============================
+# check the pods on the nodes if no pods are running deploy some pods using deployment
+
+kubectl get po -o wide
+
+vi dep-nginx.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-dep
+  labels:
+    app: nginx-dep
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx-app
+  template:
+    metadata:
+      labels:
+        app: nginx-app
+    spec:
+      containers:
+      - name: nginx-ctr
+        image: nginx:1.11
+        ports:
+        - containerPort: 80
+
+
+save the file
+
+kubectl apply -f dep-nginx.yaml 
+
+kubectl get po -o wide
+
+kubectl cordon <hostname> # where pods are running
+
+# now check the sattus of the node its disabled the scheduling
+
+kubectl get no
+
+# but still pods are running on the same node . you can't create new pods 
+
+kubectl get po - o wide
+
+# run the drain command to move the pod to another node
+
+kubectl drain <node name> --ignore-daemonsets
+
+# check the pod status , now pods are moved and running on another node 
+
+kubectl get po -o wide
+
+# now enable the node ad schedule 
+
+kubeclt uncordon <node name>
+
+# check the node status now you can schedule pod
+
+kubectl  get no
+
+# create some pod and check it
+
+kubectl get po -o wide
